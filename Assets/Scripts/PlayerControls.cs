@@ -15,16 +15,13 @@ public enum PlayerAnimation {
 
 public class PlayerControls : MonoBehaviour {
 	public float MovementSpeed = 8.0f;
-	public GameObject BulletPrefab;
-	public float FireSpeed = 10.0f;
-	public float FireCooldown = 0.2f;
+	public BasicWeapon Weapon;
 
 	private Animator _animator;
 	private bool _isMoving;
 	private PlayerAnimation _lastAnimation;
 	private Vector2 _move;
-	private float _timeToFire = 0.0f;
-	private bool _firing = false;
+	private Plane _gamePlane = new Plane(Vector3.forward, Vector3.zero);
 
 	void Awake()
 	{
@@ -39,44 +36,29 @@ public class PlayerControls : MonoBehaviour {
 
 	void FixedUpdate() {
 		rigidbody2D.velocity = _move;
-		if(_firing && _timeToFire <= 0) {
-			_timeToFire = FireCooldown;
-			Fire();
-		}
 	}
-
-
-	void Fire() {
-
-		Plane plane = new Plane(Vector3.forward, Vector3.zero);
+	
+	Vector3 GetTarget() {
 		Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 		float distance;
 
-		if(plane.Raycast(ray, out distance))
+		if(_gamePlane.Raycast(ray, out distance))
 		{
-			Vector3 targetPosition = ray.origin + ray.direction * distance;
-			Vector3 relative = targetPosition - transform.position;
-
-			GameObject bullet = (GameObject)Instantiate(Resources.Load("BulletOfDeathPrefab"), 
-			                                transform.position + relative.normalized * 0.5f, 
-			                                transform.rotation);
-
-			bullet.rigidbody2D.velocity = relative.normalized * FireSpeed;
+			return ray.origin + ray.direction * distance;
 		}
+
+		return Vector3.zero;
 	}
 
 	void Update () {
+		Weapon.AimAt(GetTarget());
 		PlayerAnimation nextAnimation = _lastAnimation;
 
-		if(_timeToFire > 0) {
-			_timeToFire -= Time.deltaTime;
-		}
-
-		if(Input.GetButtonUp("Fire1")) {
-			_firing = false;
-		}
 		if(Input.GetButtonDown("Fire1")) {
-			_firing = true;
+			Weapon.BeginFire();
+		}
+		if(Input.GetButtonUp("Fire1")) {
+			Weapon.EndFire();
 		}
 
 		if(Input.GetKeyUp(KeyCode.W)) {
